@@ -155,7 +155,8 @@ s.resp.send_by_fd = function(source,fd,msg)
     end
 
     local buff = str_pack(msg[1],msg)
-    skynet.error("send fd:"..fd.." ["..msg[1].." ] {".. table.concat(msg,",").."}")
+    skynet.error("send fd:"..fd.." ["..msg[1].." ] ")
+    --skynet.error("send fd:"..fd.." ["..msg[1].." ] {".. table.concat(msg,",").."}")
 
     socket.write(fd,buff)
 end

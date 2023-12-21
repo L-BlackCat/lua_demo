@@ -20,4 +20,4 @@ cpath = "./skynet/cservice/?.so"
 --  logger = ./userlog
 
 --  节点
-node = "node1"
+node = "node2"

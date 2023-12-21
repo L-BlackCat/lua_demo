@@ -4,6 +4,8 @@ local s = require "service"
 s.client = {}
 s.gate = nil
 
+require "scene"
+
 s.resp.client = function(source, cmd, msg)
     s.gate = source
     if s.client[cmd] then
@@ -30,7 +32,10 @@ end
 
 s.start(...)
 
+
 s.resp.kick = function(source)
+    s.leave_scene()
+    --  保存玩家数据
     skynet.sleep(200)
 end
 
@@ -43,3 +48,20 @@ s.client.work = function(msg,source)
     skynet.error("[agent work] "..s.data.coin)
     return {"work", s.data.coin}
 end
+
+s.resp.send = function(source,msg)
+    skynet.send(s.gate,"lua","send",s.id,msg)
+    --skynet.error("agent send cmd:"..msg[1]" gate"..s.gate)
+end
+
+
+
+
+
+
+
+
+
+
+
+
