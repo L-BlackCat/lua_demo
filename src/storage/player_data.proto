@@ -1,0 +1,10 @@
+package player_data;
+
+message BaseInfo{
+  required int32 player_id = 1;
+  required int32 coin = 2;
+  required string name = 3;
+  required int32 level = 4;
+  required int32 last_login_ts = 5;
+  required int32 skin = 6[default = 10];
+}

@@ -1,0 +1,23 @@
+--  开启多少个工作线程
+thread = 8
+
+bootstrap = "snlua bootstrap"	-- 启动的第一个方服务
+--  booststarp配置项
+start = "Pmain"	-- main script
+harbor = 0  --  不适用主从模式,使用cluster集群模式
+
+--  lua配置项
+lualoader = "./skynet/lualib/loader.lua"
+luaservice = "./service/?.lua;".."./service/?/init.lua;".."./skynet/service/?.lua;"
+lua_path = "./etc/?.lua;".."./lualib/?.lua;".."./skynet/lualib/?.lua;".."./skynet/lualib/?/init.lua;"
+lua_cpath = "./luaclib/?.so;".."./skynet/luaclib/?.so;"
+
+--  用c编写的服务模块的位置
+cpath = "./skynet/cservice/?.so"
+
+--  后台模式（必要时开启）
+-- daemon = "./skynet.pid"
+--  logger = ./userlog
+
+--  节点
+node = "node1"

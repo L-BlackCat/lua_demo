@@ -5,6 +5,7 @@
 ---
 local skynet = require "skynet"
 local s = require "service"
+local pb = require "protobuf"
 
 s.client = {}
 
@@ -26,15 +27,48 @@ end
 s.start(...)
 
 
-s.client.login = function(fd, msg, source)
-    skynet.error("login recv "..msg[1].." "..msg[2])
+--s.client.login = function(fd, msg, source)
+    --skynet.error("login recv "..msg[1].." "..msg[2])
     --[[
-    login验证密码
-    失败：返回失败消息给agent
-    成功：请求agentmgr分配agent
-    ]]--
-    local player_id = tonumber(msg[2])
-    local pwd = msg[3]
+    --login验证密码
+    --失败：返回失败消息给agent
+    --成功：请求agentmgr分配agent
+    --]]--
+    --local player_id = tonumber(msg[2])
+    --local pwd = msg[3]
+    --
+    --if pwd ~= "123" then
+    --    return {"login",1,"密码错误"}
+    --end
+    --
+    --local node = skynet.getenv("node")
+    --local gate = source
+    --
+    --local isOk,agent = skynet.call("agentmgr","lua","req_login",player_id,node,gate)
+    --
+    --if not isOk then
+    --    return {"login",1,"请求mgr失败"}
+    --end
+    --
+    ----  回应gate
+    --local isSuccess = skynet.call(gate,"lua","sure_agent",fd,player_id,agent)
+    --
+    --if not isSuccess then
+    --    return {"login",1,"gate注册失败"}
+    --end
+    --skynet.error("login success "..player_id)
+    --
+    --return {"login",0,"登录成功"}
+--end
+
+
+--  protobuf版本
+s.client.login = function(fd, buff, source)
+    pb.register_file("././proto/login.pb")
+    local umsg = pb.decode("login.Login",buff)
+
+    local player_id = umsg.id
+    local pwd = umsg.pw
 
     if pwd ~= "123" then
         return {"login",1,"密码错误"}

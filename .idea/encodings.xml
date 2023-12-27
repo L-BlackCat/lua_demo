@@ -4,6 +4,7 @@
     <file url="file://$PROJECT_DIR$/src/etc" charset="GBK" />
     <file url="file://$PROJECT_DIR$/src/etc/config.node1" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/etc/config.node2" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/etc/pconfig" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/luaclib" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/lualib" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/lualib/service.lua" charset="UTF-8" />

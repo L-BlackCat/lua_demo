@@ -58,9 +58,16 @@ skynet.start(function()
     if anode == mynode then
         local srv = skynet.newservice("agentmgr","agentmgr",0)
         skynet.name("agentmgr",srv)
+
+
+        local admin = skynet.newservice("admin","admin",0)
+        skynet.name("admin",admin)
     else
         local proxy = cluster.proxy(anode,"agentmgr")
         skynet.name("agentmgr",proxy)
+
+        local adminProxy = cluster.proxy(anode,"admin")
+        skynet.name("admin",adminProxy)
     end
 
     --  开启scene服务
@@ -68,6 +75,8 @@ skynet.start(function()
         local srv = skynet.newservice("scene","scene",sid)
         skynet.name("scene"..sid,srv)
     end
+
+
 
     skynet.exit()
 end)

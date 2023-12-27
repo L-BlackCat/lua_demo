@@ -24,6 +24,14 @@ function s.init()
     skynet.error("[agentmgr start]")
 end
 
+function get_online_num()
+    local length = 0
+    for k, v in pairs(players) do
+        length = length + 1
+    end
+    return length
+end
+
 
 s.resp.req_login = function(source,player_id,node,gate)
     skynet.error("[[agentmgr login] player_id: "..player_id)
@@ -89,5 +97,31 @@ s.resp.req_kick = function(source,player_id,reason)
     skynet.error("[agentmgr kick] player_id "..player_id)
     return true
 end
+
+s.resp.shutdown = function(source,num)
+    local online_num = get_online_num()
+    local n = 0
+    for player_id, _ in pairs(players) do
+        --  触发agent下线洛基
+        skynet.fork(s.resp.req_kick,nil,player_id,"close server")
+        n = n + 1
+        if n >= num then
+            break
+        end
+    end
+
+    --  等待玩家下线
+    while true do
+        skynet.sleep(100)
+        local new_count = get_online_num()
+        skynet.error("shutdown online:"..new_count)
+        if new_count <= 0 or new_count <= (online_num - num) then
+            return new_count
+        end
+    end
+
+
+end
+
 
 s.start(...)

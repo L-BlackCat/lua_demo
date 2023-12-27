@@ -2,10 +2,14 @@ local skynet = require "skynet"
 local s = require "service"
 local runconfig = require "runconfig"
 local socket = require "skynet.socket"
+local cjson = require "cjson"
+local pb = require "protobuf"
 
 --  映射
 local conns = {}    --[fd] = conn
 local players = {}  --[player_id] = gateway_player
+
+local closed = false
 
 function conn()
     local m = {
@@ -47,6 +51,56 @@ local str_pack = function(cmd, msg)
     return table.concat(msg,",").."\r\n"
 end
 
+--  客户端发送编码后的消息，无法通过telnet直接发送
+--local json_pack = function(cmd,msg)
+--    local cmd_len = string.len(cmd)
+--    local body = cjson.encode(msg)
+--    local body_len = string.len(body)
+--    local all_len = body_len + cmd_len + 2
+--    local format = string.format("> i2 i2 c%d c%d",cmd_len,body_len)
+--    local buff string.pack(format,all_len,cmd_len,cmd,body)
+--    return buff
+--end
+--
+--local json_unpack = function(buff_with_len)
+--    local len = string.len(buff_with_len)
+--    local format = string.format(">i2 c%d",len - 2)
+--    local _,buff = string.unpack(format, buff_with_len)
+--
+--    len = string.len(buff)
+--    --  netpack会自动去除首位两个字节,
+--    local namelen_format = string.format("> i2 c%d", len - 2)
+--    local name_len,other = string.unpack(namelen_format,buff)
+--    local body_len = len - 2 - name_len
+--    skynet.error("buff_len:"..len.." name_len:"..name_len.." body_len:"..body_len)
+--    local body_format = string.format("> c%d c%d",name_len,body_len)
+--    local cmd,body_buff = string.unpack(body_format,other)
+--
+--    local is_ok,msg = pcall(cjson.decode,body_buff)
+--
+--    if not is_ok or not msg or not msg.cmd or not cmd == msg.cmd then
+--        print("json unpack error")
+--        return
+--    end
+--    return cmd,msg
+--end
+
+
+local pb_pack = function(cmd,msg)
+    pb.register_file("./proto/client_data.pb")
+    local data = {
+        cmd = cmd,
+        msg = msg,
+    }
+    local buff = pb.encode("client_data.ClientData", data)
+    print("len"..string.len(buff))
+end
+
+local pb_unpack = function(buff)
+    pb.register_file("./proto/client_data.pb")
+    local umsg = pb.encode("client_data.ClientData",buff)
+    return umsg.cmd,umsg.msg
+end
 
 --  解决粘包
 local process_msg = function(fd, msg_str)
@@ -62,8 +116,15 @@ local process_msg = function(fd, msg_str)
         local nodecfg = runconfig[node]
         local login_id = math.random(1,#nodecfg.login)
         local login = "login"..login_id
+        local msg = {
+            id = tonumber(msg[2]),
+            pw = msg[3],
+        }
+        pb.register_file("././proto/login.pb")
+        local buff = pb.encode("login.Login",msg)
+
         skynet.error("send login to "..login)
-        skynet.send(login,"lua","client",fd,cmd,msg)
+        skynet.send(login,"lua","client",fd,cmd,buff)
     else
         local gplayer = players[player_id]
         local agent = gplayer.agent
@@ -121,6 +182,10 @@ function rev_loop(fd)
 end
 
 local connect = function(fd,addr)
+    if closed then
+        skynet.error("gateway is shutdown")
+        return
+    end
     skynet.error(fd.."connect agent addr:"..addr)
     local conn = conn()
     conns[fd] = conn
@@ -154,6 +219,7 @@ s.resp.send_by_fd = function(source,fd,msg)
         return
     end
 
+    --local buff = str_pack(msg[1],msg)
     local buff = str_pack(msg[1],msg)
     skynet.error("send fd:"..fd.." ["..msg[1].." ] ")
     --skynet.error("send fd:"..fd.." ["..msg[1].." ] {".. table.concat(msg,",").."}")
@@ -216,3 +282,9 @@ s.resp.kick = function(source,player_id)
     disconnect(c.fd)
     socket.close(c.fd)
 end
+
+s.resp.shutdown = function(source)
+    closed = true
+    skynet.error("update "..s.name..s.id)
+end
+
