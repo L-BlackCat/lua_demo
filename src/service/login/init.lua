@@ -84,12 +84,12 @@ s.client.login = function(fd, buff, source)
     end
 
     --  回应gate
-    local isSuccess = skynet.call(gate,"lua","sure_agent",fd,player_id,agent)
+    local isSuccess,key = skynet.call(gate,"lua","sure_agent",fd,player_id,agent)
 
     if not isSuccess then
         return {"login",1,"gate注册失败"}
     end
     skynet.error("login success "..player_id)
 
-    return {"login",0,"登录成功"}
+    return {"login",0,key,"登录成功"}
 end

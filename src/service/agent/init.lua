@@ -42,8 +42,6 @@ function timer()
     last_check_ts = now
     if week > last_week then
         open_activity()
-    else
-        skynet.error("can't update week")
     end
 end
 

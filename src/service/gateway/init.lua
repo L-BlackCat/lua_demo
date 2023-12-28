@@ -24,6 +24,9 @@ function gateway_player()
         player_id = nil,
         agent = nil,
         conn = nil,
+        reconnect_id = math.random(1,9999999),
+        msg_cache = {},
+        --last_connect_ts = 0,  --  定时器做处理，5分钟内没有登录，触发下线机制
     }
     return m
 end
@@ -110,7 +113,9 @@ local process_msg = function(fd, msg_str)
     local conn = conns[fd]
     local player_id = conn.player_id
 
-    if not player_id then
+    if cmd == "reconnect" then
+        process_reconnect(fd,msg)
+    elseif not player_id then
         --  登录,随机选择一个登录服务
         local node = skynet.getenv("node")
         local nodecfg = runconfig[node]
@@ -151,15 +156,21 @@ function disconnect(fd)
         return
     end
 
-    conn[fd] = nil
-
     local player_id = conn.player_id
     if not player_id then
         return
     else
-        players[player_id] = nil
-        local reason = "断线"
-        skynet.call("agentmgr","lua","req_kick",player_id,reason)
+        local gateway_player = players[player_id]
+        gateway_player.conn = nil
+        gateway_player.last_connect_ts = os.time()
+        --  定时任务：5分钟内未重新连接，触发掉线逻辑
+        skynet.timeout(300 * 100,function()
+            if gateway_player.conn ~= nil then
+                return
+            end
+            local reason = "掉线"
+            skynet.call("agentmgr","lua","req_kick",player_id,reason)
+        end)
     end
 end
 
@@ -221,8 +232,7 @@ s.resp.send_by_fd = function(source,fd,msg)
 
     --local buff = str_pack(msg[1],msg)
     local buff = str_pack(msg[1],msg)
-    skynet.error("send fd:"..fd.." ["..msg[1].." ] ")
-    --skynet.error("send fd:"..fd.." ["..msg[1].." ] {".. table.concat(msg,",").."}")
+    skynet.error("send fd:"..fd.." ["..msg[1].." ] {".. table.concat(msg,",").."}")
 
     socket.write(fd,buff)
 end
@@ -235,15 +245,15 @@ s.resp.send = function(source, player_id, msg)
 
     local conn = gplayer.conn
     if not conn then
+        table.insert(gplayer.msg_cache,msg)
+        local size = #gplayer.msg_cache
+        if size > 500 then
+            skynet.call("agentmgr","lua","req_kick",player_id,"gateway缓存过多")
+        end
         return
     end
 
-    local fd = conn.fd
-    if not fd then
-        return
-    end
-
-    s.resp.send_by_fd(source,fd,msg)
+    s.resp.send_by_fd(source,conn.fd,msg)
 end
 
 s.resp.sure_agent = function(source,fd, player_id, agent)
@@ -262,7 +272,7 @@ s.resp.sure_agent = function(source,fd, player_id, agent)
     gplayer.player_id = player_id
     gplayer.conn = conn
     players[player_id] = gplayer
-    return true
+    return true,gplayer.reconnect_id
 end
 
 s.resp.kick = function(source,player_id)
@@ -288,3 +298,42 @@ s.resp.shutdown = function(source)
     skynet.error("update "..s.name..s.id)
 end
 
+function process_reconnect(fd,msg)
+
+    local player_id = tonumber(msg[2])
+
+    local reconnect_id = tonumber(msg[3])
+
+    skynet.error("player_id:"..player_id.." key:"..reconnect_id)
+    local gateway_player = players[player_id]
+
+    if not gateway_player then
+        skynet.error("player_id not exit")
+        return
+    end
+
+    if gateway_player.conn ~= nil then
+        skynet.error("player_id:"..player_id.." not need reconnect")
+        return
+    end
+
+    local conn = conns[fd]
+    if not conn then
+        skynet.error("conn not exit")
+        return
+    end
+
+    if gateway_player.reconnect_id ~= reconnect_id then
+        skynet.error("reconnectfail ,reconnect_id not right")
+        return;
+    end
+
+    gateway_player.conn = conn
+
+    s.resp.send_by_fd(nil,fd,{"reconnect",0})
+    for i, cmsg in ipairs(gateway_player.msg_cache) do
+        s.resp.send_by_fd(nil,fd,cmsg)
+    end
+
+    gateway_player.msg_cache = {}
+end
